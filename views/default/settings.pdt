@@ -1,0 +1,27 @@
+<ul>
+    <li>
+        <?php
+            $this->Form->label($this->_('Midtrans.merchant_id', true), 'merchant_id');
+            $this->Form->fieldText('merchant_id', (isset($meta['merchant_id']) ? $meta['merchant_id'] : null), ['id'=>'merchant_id']);
+        ?>
+    </li>
+    <li>
+        <?php
+            $this->Form->label($this->_('Midtrans.client_key', true), 'client_key');
+            $this->Form->fieldText('client_key', (isset($meta['client_key']) ? $meta['client_key'] : null), ['id'=>'client_key']);
+        ?>
+    </li>
+    <li>
+        <?php
+            $this->Form->label($this->_('Midtrans.server_key', true), 'server_key');
+            $this->Form->fieldText('server_key', (isset($meta['server_key']) ? $meta['server_key'] : null), ['id'=>'server_key']);
+        ?>
+    </li>
+    <li>
+        <?php
+               $this->Form->fieldCheckbox('dev_mode', 'true', ((isset($meta['dev_mode']) ? $meta['dev_mode'] : 'false') == 'true'), ['id'=>'dev_mode']);
+            $this->Form->label($this->_('Midtrans.dev_mode', true), 'dev_mode', ['class'=>'inline']);
+        ?>
+        <span class="tooltip"><?php $this->_('AppController.tooltip.text'); ?><div><?php $this->_('Midtrans.dev_mode_note'); ?></div></span>
+    </li>
+</ul>

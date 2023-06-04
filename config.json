@@ -1,0 +1,13 @@
+{
+	"version": "1.0.0",
+	"name": "Midtrans.name",
+	"description": "Midtrans.description",
+	"authors": [
+		{
+			"name": "Reynaldi Arya",
+			"url": "http://reynaldiab.com"
+		}
+	],
+	"currencies": ["IDR"],
+	"signup_url": "https://midtrans.com/id/passport"
+}
