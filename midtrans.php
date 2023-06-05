@@ -173,7 +173,9 @@ class NonmerchantDemo extends NonmerchantGateway
 	public function buildProcess(array $contact_info, $amount, array $invoice_amounts = null, array $options = null)
 	{
 		// Load the models required
-		// Loader::loadModels($this, ['Companies']);
+		Loader::loadModels($this, ['Clients']);
+        $client = $this->Clients->get($contact_info['client_id']);
+
 
 		// Load the helpers required for this view
 		Loader::loadHelpers($this, ['Html']);
@@ -183,22 +185,22 @@ class NonmerchantDemo extends NonmerchantGateway
 		\Midtrans\Config::$serverKey = $this->meta['server_key'];
 		\Midtrans\Config::$isProduction = $this->meta['dev_mode'];
 
-		// Set all invoices to pay
-		// if (isset($invoice_amounts) && is_array($invoice_amounts)) {
-		//     $invoices = $this->serializeInvoices($invoice_amounts);
-		// }
-
 		// Generate an order
 		$transaction_details = [
-			'order_id' => rand(),
+			'order_id' => 'BLT'.$contact_info['client_id'].time(),
 			'gross_amount' => $amount,
 		];
 
 		$customer_details = array(
 			'first_name'    => ($contact_info['first_name'] ?? null),
 			'last_name'     => ($contact_info['last_name'] ?? null),
-			// 'email'     => ($contact_info['email'] ?? null),
+			'email'     => $client->email,
 		);
+
+		// Set all invoices to pay
+		if (isset($invoice_amounts) && is_array($invoice_amounts)) {
+		    $transaction_details['gross_amount'] = $this->serializeInvoices($invoice_amounts);
+		}
 
 		$params = array(
 			'transaction_details' => $transaction_details,
@@ -208,7 +210,7 @@ class NonmerchantDemo extends NonmerchantGateway
 		try {
 			// Get Snap Payment Page URL
 			$paymentUrl = \Midtrans\Snap::createTransaction($params)->redirect_url;
-
+			$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($paymentUrl), 'output', true);
 			return $this->buildForm($paymentUrl);
 		} catch (\Exception $e) {
 			echo $e->getMessage();
@@ -259,44 +261,24 @@ class NonmerchantDemo extends NonmerchantGateway
 		#
 		#
 		// Log the successful response
-		// Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'Midtrans.php');
-		// \Midtrans\Config::$isProduction = $this->meta['dev_mode'];
-		// \Midtrans\Config::$serverKey = $this->meta['server_key'];
-		// $notif = new \Midtrans\Notification();
+        $this->log($this->isset($_SERVER['REQUEST_URI']), serialize($post), "output", true);
 
-		// $transaction = $notif->transaction_status;
-		// $type = $notif->payment_type;
-		// $order_id = $notif->order_id;
-		// $fraud = $notif->fraud_status;
+        #
+        # TODO: verify the payment information received from the gateway is valid
+        #
+        $status = "approved";
 
-		// if ($transaction == 'capture') {
-		// 	// For credit card transaction, we need to check whether transaction is challenge by FDS or not
-		// 	if ($type == 'credit_card') {
-		// 		if ($fraud == 'challenge') {
-		// 			// TODO set payment status in merchant's database to 'Challenge by FDS'
-		// 			// TODO merchant should decide whether this transaction is authorized or not in MAP
-		// 			echo "Transaction order_id: " . $order_id . " is challenged by FDS";
-		// 		} else {
-		// 			// TODO set payment status in merchant's database to 'Success'
-		// 			echo "Transaction order_id: " . $order_id . " successfully captured using " . $type;
-		// 		}
-		// 	}
-		// } else if ($transaction == 'settlement') {
-		// 	// TODO set payment status in merchant's database to 'Settlement'
-		// 	echo "Transaction order_id: " . $order_id . " successfully transfered using " . $type;
-		// } else if ($transaction == 'pending') {
-		// 	// TODO set payment status in merchant's database to 'Pending'
-		// 	echo "Waiting customer to finish transaction order_id: " . $order_id . " using " . $type;
-		// } else if ($transaction == 'deny') {
-		// 	// TODO set payment status in merchant's database to 'Denied'
-		// 	echo "Payment using " . $type . " for transaction order_id: " . $order_id . " is denied.";
-		// } else if ($transaction == 'expire') {
-		// 	// TODO set payment status in merchant's database to 'expire'
-		// 	echo "Payment using " . $type . " for transaction order_id: " . $order_id . " is expired.";
-		// } else if ($transaction == 'cancel') {
-		// 	// TODO set payment status in merchant's database to 'Denied'
-		// 	echo "Payment using " . $type . " for transaction order_id: " . $order_id . " is canceled.";
-		// }
+        // Return the payment information
+        return array(
+            'client_id' => $this->isSet($get['client_id']),
+            'amount' => $this->isSet($post['amount']),
+            'currency' => $this->isSet($post['currency']),
+            'status' => $status,
+            'reference_id' => null,
+            'transaction_id' => $this->isSet($post['transaction_id']),
+            'parent_transaction_id' => null,
+            'invoices' => array()
+        );
 	}
 
 	/**
