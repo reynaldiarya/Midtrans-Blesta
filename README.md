@@ -1,4 +1,4 @@
-# Alipay Gateway
+# Midtrans Gateway
 
 This is a nonmerchant gateway for Blesta that integrates with [Midtrans](https://midtrans.com/id/passport).
 
@@ -10,7 +10,7 @@ your Blesta installation path.
     For example:
 
     ```
-    /var/www/html/blesta/components/nonmerchant/alipay/
+    /var/www/html/blesta/components/nonmerchant/
     ```
 
 2. Log in to your admin Blesta account and navigate to
