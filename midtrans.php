@@ -2,7 +2,7 @@
 
 /**
  * Midtrans Gateway
- * The Alipay API documentation can be found at:
+ * The Midtrans API documentation can be found at:
  * https://docs.midtrans.com/
  * @package blesta
  * @subpackage blesta.components.gateways.nonmerchant_demo
@@ -10,7 +10,7 @@
  * @license http://www.blesta.com/license/ The Blesta License Agreement
  * @link http://www.blesta.com/ Blesta
  */
-class NonmerchantDemo extends NonmerchantGateway
+class Midtrans extends NonmerchantGateway
 {
 	/**
 	 * @var array An array of meta data for this gateway
@@ -176,31 +176,31 @@ class NonmerchantDemo extends NonmerchantGateway
 		Loader::loadModels($this, ['Clients']);
         $client = $this->Clients->get($contact_info['client_id']);
 
-
 		// Load the helpers required for this view
 		Loader::loadHelpers($this, ['Html']);
 
 		// Load library methods
 		Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'Midtrans.php');
 		\Midtrans\Config::$serverKey = $this->meta['server_key'];
-		\Midtrans\Config::$isProduction = $this->meta['dev_mode'];
+		if($this->meta['dev_mode'] === 'false'){
+		    \Midtrans\Config::$isProduction = true;
+		} else{
+			\Midtrans\Config::$isProduction = false;
+	    }
+
+		$order_id = $this->serializeInvoices($invoice_amounts);
 
 		// Generate an order
 		$transaction_details = [
-			'order_id' => 'BLT'.$contact_info['client_id'].time(),
+			'order_id' => $order_id,
 			'gross_amount' => $amount,
 		];
 
 		$customer_details = array(
 			'first_name'    => ($contact_info['first_name'] ?? null),
 			'last_name'     => ($contact_info['last_name'] ?? null),
-			'email'     => $client->email,
+			'email'     	=> $client->email,
 		);
-
-		// Set all invoices to pay
-		if (isset($invoice_amounts) && is_array($invoice_amounts)) {
-		    $transaction_details['gross_amount'] = $this->serializeInvoices($invoice_amounts);
-		}
 
 		$params = array(
 			'transaction_details' => $transaction_details,
@@ -260,24 +260,88 @@ class NonmerchantDemo extends NonmerchantGateway
 		# TODO: Verify the get/post data, then return the transaction
 		#
 		#
-		// Log the successful response
-        $this->log($this->isset($_SERVER['REQUEST_URI']), serialize($post), "output", true);
+		Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'Midtrans.php');
+		\Midtrans\Config::$serverKey = $this->meta['server_key'];
+		if($this->meta['dev_mode'] === 'false'){
+		    \Midtrans\Config::$isProduction = true;
+		}else{
+		     \Midtrans\Config::$isProduction = false;
+		}
+		$notif = new \Midtrans\Notification();
 
-        #
-        # TODO: verify the payment information received from the gateway is valid
-        #
-        $status = "approved";
+		$transaction = $notif->transaction_status;
+		$type = $notif->payment_type;
+		$order_id = $notif->order_id;
+		$fraud = $notif->fraud_status;
+		$currency = $notif->currency;
+		$amount = $notif->gross_amount;
+		$transaction_id = $notif->transaction_id;
+
+		$temp = explode('|', $order_id);
+		foreach ($temp as $inv) {
+            $tempclient = explode('=', $inv, 2);
+            if (count($tempclient) != 2) {
+                continue;
+            }
+            $dataclient[] = ['id' => $tempclient[0], 'amount' => $tempclient[1]];
+        }
+
+		$record = new Record();
+        $client_id = $record->select('client_id')->from('invoices')->where('id', '=', $tempclient[0])->fetch();
+
+		if ($transaction == 'capture') {
+		// For credit card transaction, we need to check whether transaction is challenge by FDS or not
+			if ($type == 'credit_card'){
+				if($fraud == 'challenge'){
+				// TODO set payment status in merchant's database to 'Challenge by FDS'
+				// TODO merchant should decide whether this transaction is authorized or not in MAP
+					$status = 'declined';
+					$return_status = true;
+				}else {
+				// TODO set payment status in merchant's database to 'Success'
+					$status = 'approved';
+					$return_status = true;
+				}
+			}
+		}
+		else if ($transaction == 'settlement'){
+		// TODO set payment status in merchant's database to 'Settlement'
+			$status = 'approved';
+			$return_status = true;
+		}
+		else if($transaction == 'pending'){
+		// TODO set payment status in merchant's database to 'Pending'
+			$status = 'pending';
+			$return_status = true;
+		}
+		else if ($transaction == 'deny') {
+		// TODO set payment status in merchant's database to 'Denied'
+			$status = 'declined';
+			$return_status = true;
+		}
+		else if ($transaction == 'expire') {
+		// TODO set payment status in merchant's database to 'expire'
+			$status = 'void';
+			$return_status = true;
+		}
+		else if ($transaction == 'cancel') {
+		// TODO set payment status in merchant's database to 'Denied'
+			$status = 'void';
+			$return_status = true;
+		}
+
+		$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($transaction), 'output', $return_status);
 
         // Return the payment information
         return array(
-            'client_id' => $this->isSet($get['client_id']),
-            'amount' => $this->isSet($post['amount']),
-            'currency' => $this->isSet($post['currency']),
+            'client_id' => $client_id->client_id,
+            'amount' => $amount,
+            'currency' => $currency,
             'status' => $status,
             'reference_id' => null,
-            'transaction_id' => $this->isSet($post['transaction_id']),
+            'transaction_id' => $transaction_id,
             'parent_transaction_id' => null,
-            'invoices' => array()
+            'invoices' => $this->unserializeInvoices($order_id ?? null)
         );
 	}
 
@@ -373,4 +437,46 @@ class NonmerchantDemo extends NonmerchantGateway
 
 		$this->Input->setErrors($this->getCommonError("unsupported"));
 	}
+
+	/**
+     * Serializes an array of invoice info into a string
+     *
+     * @param array A numerically indexed array invoices info including:
+     *  - id The ID of the invoice
+     *  - amount The amount relating to the invoice
+     * @return string A serialized string of invoice info in the format of key1=value1|key2=value2
+     */
+    private function serializeInvoices(array $invoices)
+    {
+        $str = '';
+        foreach ($invoices as $i => $invoice) {
+            $str .= ($i > 0 ? '|' : '') . $invoice['id'] . '-' . intval($invoice['amount']);
+        }
+
+        return $str;
+    }
+
+    /**
+     * Unserializes a string of invoice info into an array
+     *
+     * @param string A serialized string of invoice info in the format of key1=value1|key2=value2
+     * @return array A numerically indexed array invoices info including:
+     *  - id The ID of the invoice
+     *  - amount The amount relating to the invoice
+     */
+    private function unserializeInvoices($str)
+    {
+        $invoices = [];
+        $temp = explode('|', $str);
+        foreach ($temp as $pair) {
+            $pairs = explode('-', $pair, 2);
+            if (count($pairs) != 2) {
+                continue;
+            }
+            $invoices[] = ['id' => $pairs[0], 'amount' => $pairs[1]];
+        }
+
+        return $invoices;
+    }
+
 }

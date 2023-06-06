@@ -19,7 +19,7 @@
     </li>
     <li>
         <?php
-               $this->Form->fieldCheckbox('dev_mode', 'true', ((isset($meta['dev_mode']) ? $meta['dev_mode'] : 'false') == 'true'), ['id'=>'dev_mode']);
+            $this->Form->fieldCheckbox('dev_mode', 'true', ((isset($meta['dev_mode']) ? $meta['dev_mode'] : 'false') == 'true'), ['id'=>'dev_mode']);
             $this->Form->label($this->_('Midtrans.dev_mode', true), 'dev_mode', ['class'=>'inline']);
         ?>
         <span class="tooltip"><?php $this->_('AppController.tooltip.text'); ?><div><?php $this->_('Midtrans.dev_mode_note'); ?></div></span>
