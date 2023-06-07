@@ -275,58 +275,81 @@ class Midtrans extends NonmerchantGateway
 
 		$transaction = $notif->transaction_status;
 		$type = $notif->payment_type;
+		$status_code = $notif->status_code;
 		$order_id = $notif->order_id;
 		$fraud = $notif->fraud_status;
 		$currency = $notif->currency;
 		$amount = $notif->gross_amount;
 		$transaction_id = $notif->transaction_id;
 
-		$temp = explode('|', $order_id);
-		foreach ($temp as $inv) {
-			$tempclient = explode('=', $inv, 2);
-			if (count($tempclient) != 2) {
-				continue;
-			}
-			$dataclient[] = ['id' => $tempclient[0], 'amount' => $tempclient[1]];
-		}
-
-		$record = new Record();
-		$client_id = $record->select('client_id')->from('invoices')->where('id', '=', $tempclient[0])->fetch();
-
-		if ($transaction == 'capture') {
-			// For credit card transaction, we need to check whether transaction is challenge by FDS or not
-			if ($type == 'credit_card') {
-				if ($fraud == 'challenge') {
-					// TODO set payment status in merchant's database to 'Challenge by FDS'
-					// TODO merchant should decide whether this transaction is authorized or not in MAP
-					$status = 'declined';
-					$return_status = true;
-				} else {
-					// TODO set payment status in merchant's database to 'Success'
-					$status = 'approved';
-					$return_status = true;
+		$check_signature = hash('sha512', $order_id . $status_code . $amount . $this->meta['server_key']);
+		if ($notif->signature_key == $check_signature) {
+			$temp = explode('|', $order_id);
+			foreach ($temp as $inv) {
+				$tempclient = explode('=', $inv, 2);
+				if (count($tempclient) != 2) {
+					continue;
 				}
+				$dataclient[] = ['id' => $tempclient[0], 'amount' => $tempclient[1]];
 			}
-		} else if ($transaction == 'settlement') {
-			// TODO set payment status in merchant's database to 'Settlement'
-			$status = 'approved';
-			$return_status = true;
-		} else if ($transaction == 'pending') {
-			// TODO set payment status in merchant's database to 'Pending'
-			$status = 'pending';
-			$return_status = true;
-		} else if ($transaction == 'deny') {
-			// TODO set payment status in merchant's database to 'Denied'
-			$status = 'declined';
-			$return_status = true;
-		} else if ($transaction == 'expire') {
-			// TODO set payment status in merchant's database to 'expire'
-			$status = 'void';
-			$return_status = true;
-		} else if ($transaction == 'cancel') {
-			// TODO set payment status in merchant's database to 'Denied'
-			$status = 'void';
-			$return_status = true;
+
+			$record = new Record();
+			$client_id = $record->select('client_id')->from('invoices')->where('id', '=', $tempclient[0])->fetch();
+
+			if ($transaction == 'capture') {
+				// For credit card transaction, we need to check whether transaction is challenge by FDS or not
+				if ($type == 'credit_card') {
+					if ($fraud == 'challenge') {
+						// TODO set payment status in merchant's database to 'Challenge by FDS'
+						// TODO merchant should decide whether this transaction is authorized or not in MAP
+						$status = 'declined';
+						$return_status = true;
+					} else {
+						// TODO set payment status in merchant's database to 'Success'
+						$status = 'approved';
+						$return_status = true;
+					}
+				}
+			} else if ($transaction == 'settlement') {
+				// TODO set payment status in merchant's database to 'Settlement'
+				$status = 'approved';
+				$return_status = true;
+			} else if ($transaction == 'pending') {
+				// TODO set payment status in merchant's database to 'Pending'
+				$status = 'pending';
+				$return_status = true;
+			} else if ($transaction == 'deny') {
+				// TODO set payment status in merchant's database to 'Denied'
+				$status = 'declined';
+				$return_status = true;
+			} else if ($transaction == 'expire') {
+				// TODO set payment status in merchant's database to 'expire'
+				$status = 'void';
+				$return_status = true;
+			} else if ($transaction == 'cancel') {
+				// TODO set payment status in merchant's database to 'Denied'
+				$status = 'void';
+				$return_status = true;
+			}
+
+			$data = [
+				'success' => true,
+				'message' => 'Notifikasi berhasil diproses',
+			];
+			$response = json_encode($data);
+			header('Content-Type: application/json');
+			http_response_code(200);
+			echo $response;
+		} else {
+			// Data yang akan dikirim sebagai JSON
+			$data = [
+				'error' => true,
+				'message' => 'Signature key tidak terverifikasi',
+			];
+			$response = json_encode($data);
+			header('Content-Type: application/json');
+			http_response_code(403);
+			echo $response;
 		}
 
 		$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($transaction), 'output', $return_status);

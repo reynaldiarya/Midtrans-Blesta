@@ -1,11 +1,11 @@
 {
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"name": "Midtrans.name",
 	"description": "Midtrans.description",
 	"authors": [
 		{
 			"name": "Reynaldi Arya",
-			"url": "http://reynaldiab.com"
+			"url": "https://reynaldiab.com"
 		}
 	],
 	"currencies": ["IDR"],
