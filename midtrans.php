@@ -207,14 +207,18 @@ class Midtrans extends NonmerchantGateway
 			'customer_details' => $customer_details,
 		);
 
-		try {
-			// Get Snap Payment Page URL
-			$paymentUrl = \Midtrans\Snap::createTransaction($params)->redirect_url;
-			$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($paymentUrl), 'output', true);
-			return $this->buildForm($paymentUrl);
-		} catch (\Exception $e) {
-			echo $e->getMessage();
-		}
+		if(strlen($order_id) <= 50){
+			try {
+				// Get Snap Payment Page URL
+				$paymentUrl = \Midtrans\Snap::createTransaction($params)->redirect_url;
+				$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($paymentUrl), 'output', true);
+				return $this->buildForm($paymentUrl);
+			} catch (\Exception $e) {
+				echo $e->getMessage();
+			}
+		}else{
+            $this->Input->setErrors($this->getCommonError("general"));
+        }
 	}
 
 	/**
