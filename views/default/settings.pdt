@@ -24,4 +24,11 @@
         ?>
         <span class="tooltip"><?php $this->_('AppController.tooltip.text'); ?><div><?php $this->_('Midtrans.dev_mode_note'); ?></div></span>
     </li>
+    <li>
+        <?php
+            $this->Form->fieldCheckbox('3ds_mode', 'true', ((isset($meta['3ds_mode']) ? $meta['3ds_mode'] : 'false') == 'true'), ['id'=>'3ds_mode']);
+            $this->Form->label($this->_('Midtrans.3ds_mode', true), '3ds_mode', ['class'=>'inline']);
+        ?>
+        <span class="tooltip"><?php $this->_('AppController.tooltip.text'); ?><div><?php $this->_('Midtrans.3ds_mode_note'); ?></div></span>
+    </li>
 </ul>

@@ -18,10 +18,17 @@ your Blesta installation path.
 
 3. Find the Midtrans gateway and click the "Install" button to install it
 
-4. You're done!
+4. Enter data Merchant ID, Client Key, Server Key
+
+4. Setting the Midtrans Callback by the way
+> Login to your Midtrans account > 'Settings' > 'Configuration'
+    In the Payment Notification URL, enter https://domain.com/blesta_directory/callback/gw/1/midtrans,
+    If you want to fill in the redirect url finish, unfinish, and error, you can fill it like this https://domain.com/client/pay/received/midtrans/.
+
+5. You're done!
 
 ### Blesta Compatibility
 
 |Blesta Version|Module Version|
 |--------------|--------------|
-|>= v4.9.0|v1.0.1|
+|>= v4.9.0|v1.0.2|

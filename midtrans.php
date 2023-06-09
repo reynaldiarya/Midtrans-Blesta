@@ -98,6 +98,10 @@ class Midtrans extends NonmerchantGateway
 			$meta['dev_mode'] = 'false';
 		}
 
+		if (!isset($meta['3ds_mode'])) {
+			$meta['3ds_mode'] = 'false';
+		}
+
 
 		$this->Input->setRules($rules);
 
@@ -186,6 +190,11 @@ class Midtrans extends NonmerchantGateway
 			\Midtrans\Config::$isProduction = true;
 		} else {
 			\Midtrans\Config::$isProduction = false;
+		}
+		if ($this->meta['3ds_mode'] === 'false') {
+			\Midtrans\Config::$is3ds = false;
+		} else {
+			\Midtrans\Config::$is3ds = true;
 		}
 
 		$order_id = $this->serializeInvoices($invoice_amounts);
@@ -389,8 +398,89 @@ class Midtrans extends NonmerchantGateway
 		#
 		# TODO: Return transaction data, if possible
 		#
+		Loader::load(dirname(__FILE__) . DS . 'lib' . DS . 'Midtrans.php');
+		\Midtrans\Config::$serverKey = $this->meta['server_key'];
+		if ($this->meta['dev_mode'] === 'false') {
+			\Midtrans\Config::$isProduction = true;
+		} else {
+			\Midtrans\Config::$isProduction = false;
+		}
+		$checkorderid = $get['order_id'];
+		$checktransaction = \Midtrans\Transaction::status($checkorderid);
 
-		$this->Input->setErrors($this->getCommonError("unsupported"));
+		$transaction = $checktransaction->transaction_status;
+		$type = $checktransaction->payment_type;
+		$status_code = $checktransaction->status_code;
+		$order_id = $checktransaction->order_id;
+		$fraud = $checktransaction->fraud_status;
+		$currency = $checktransaction->currency;
+		$amount = $checktransaction->gross_amount;
+		$transaction_id = $checktransaction->transaction_id;
+
+		$check_signature = hash('sha512', $order_id . $status_code . $amount . $this->meta['server_key']);
+		if ($checktransaction->signature_key == $check_signature) {
+			$temp = explode('|', $order_id);
+			foreach ($temp as $inv) {
+				$tempclient = explode('=', $inv, 2);
+				if (count($tempclient) != 2) {
+					continue;
+				}
+				$dataclient[] = ['id' => $tempclient[0], 'amount' => $tempclient[1]];
+			}
+
+			$record = new Record();
+			$client_id = $record->select('client_id')->from('invoices')->where('id', '=', $tempclient[0])->fetch();
+
+			if ($transaction == 'capture') {
+				// For credit card transaction, we need to check whether transaction is challenge by FDS or not
+				if ($type == 'credit_card') {
+					if ($fraud == 'challenge') {
+						// TODO set payment status in merchant's database to 'Challenge by FDS'
+						// TODO merchant should decide whether this transaction is authorized or not in MAP
+						$status = 'declined';
+						$return_status = true;
+					} else {
+						// TODO set payment status in merchant's database to 'Success'
+						$status = 'approved';
+						$return_status = true;
+					}
+				}
+			} else if ($transaction == 'settlement') {
+				// TODO set payment status in merchant's database to 'Settlement'
+				$status = 'approved';
+				$return_status = true;
+			} else if ($transaction == 'pending') {
+				// TODO set payment status in merchant's database to 'Pending'
+				$status = 'pending';
+				$return_status = true;
+			} else if ($transaction == 'deny') {
+				// TODO set payment status in merchant's database to 'Denied'
+				$status = 'declined';
+				$return_status = true;
+			} else if ($transaction == 'expire') {
+				// TODO set payment status in merchant's database to 'expire'
+				$status = 'void';
+				$return_status = true;
+			} else if ($transaction == 'cancel') {
+				// TODO set payment status in merchant's database to 'Denied'
+				$status = 'void';
+				$return_status = true;
+			}
+		}
+
+		$this->log((isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null), serialize($transaction), 'output', $return_status);
+
+		// Return the payment information
+		return array(
+			'client_id' => $client_id->client_id,
+			'amount' => $amount,
+			'currency' => $currency,
+			'status' => $status,
+			'reference_id' => null,
+			'transaction_id' => $transaction_id,
+			'parent_transaction_id' => null,
+			'invoices' => $this->unserializeInvoices($order_id ?? null)
+		);
 	}
 
 

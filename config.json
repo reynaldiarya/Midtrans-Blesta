@@ -1,11 +1,15 @@
 {
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"name": "Midtrans.name",
 	"description": "Midtrans.description",
 	"authors": [
 		{
 			"name": "Reynaldi Arya",
 			"url": "https://reynaldiab.com"
+		},
+		{
+			"name": "Hexahost",
+			"url": "https://hexahost.id"
 		}
 	],
 	"currencies": ["IDR"],
