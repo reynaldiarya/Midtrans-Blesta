@@ -197,7 +197,7 @@ class Midtrans extends NonmerchantGateway
 			\Midtrans\Config::$is3ds = true;
 		}
 
-		$order_id = $this->serializeInvoices($invoice_amounts);
+		$order_id = $contact_info['client_id'] . rand(1,100) . '.' . $this->serializeInvoices($invoice_amounts);
 
 		// Generate an order
 		$transaction_details = [
@@ -290,12 +290,15 @@ class Midtrans extends NonmerchantGateway
 		$currency = $notif->currency;
 		$amount = $notif->gross_amount;
 		$transaction_id = $notif->transaction_id;
+		$part_invoice = explode('.', $order_id, 2);
+		$list_invoice = $part_invoice[1];
+
 
 		$check_signature = hash('sha512', $order_id . $status_code . $amount . $this->meta['server_key']);
 		if ($notif->signature_key == $check_signature) {
-			$temp = explode('|', $order_id);
+			$temp = explode('|', $list_invoice);
 			foreach ($temp as $inv) {
-				$tempclient = explode('=', $inv, 2);
+				$tempclient = explode('-', $inv, 2);
 				if (count($tempclient) != 2) {
 					continue;
 				}
@@ -372,7 +375,7 @@ class Midtrans extends NonmerchantGateway
 			'reference_id' => null,
 			'transaction_id' => $transaction_id,
 			'parent_transaction_id' => null,
-			'invoices' => $this->unserializeInvoices($order_id ?? null)
+			'invoices' => $this->unserializeInvoices($list_invoice ?? null)
 		);
 	}
 
@@ -416,12 +419,14 @@ class Midtrans extends NonmerchantGateway
 		$currency = $checktransaction->currency;
 		$amount = $checktransaction->gross_amount;
 		$transaction_id = $checktransaction->transaction_id;
+		$part_invoice = explode('.', $order_id, 2);
+		$list_invoice = $part_invoice[1];
 
 		$check_signature = hash('sha512', $order_id . $status_code . $amount . $this->meta['server_key']);
 		if ($checktransaction->signature_key == $check_signature) {
-			$temp = explode('|', $order_id);
+			$temp = explode('|', $list_invoice);
 			foreach ($temp as $inv) {
-				$tempclient = explode('=', $inv, 2);
+				$tempclient = explode('-', $inv, 2);
 				if (count($tempclient) != 2) {
 					continue;
 				}
@@ -479,7 +484,7 @@ class Midtrans extends NonmerchantGateway
 			'reference_id' => null,
 			'transaction_id' => $transaction_id,
 			'parent_transaction_id' => null,
-			'invoices' => $this->unserializeInvoices($order_id ?? null)
+			'invoices' => $this->unserializeInvoices($list_invoice ?? null)
 		);
 	}
 
