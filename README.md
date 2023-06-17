@@ -10,7 +10,7 @@ your Blesta installation path.
     For example:
 
     ```
-    /var/www/html/blesta/components/nonmerchant/
+    /var/www/html/blesta/components/gateways/nonmerchant/
     ```
 
 2. Log in to your admin Blesta account and navigate to
